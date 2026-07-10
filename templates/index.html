@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FootballGPT — Your AI Football Expert</title>
+  <meta name="description" content="Chat with FootballGPT — an AI-powered football expert. Ask about players, clubs, tactics, results, and more." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ── Background pitch lines ── -->
+  <div class="pitch-bg" aria-hidden="true">
+    <div class="pitch-line pitch-circle"></div>
+    <div class="pitch-line pitch-center"></div>
+    <div class="pitch-line pitch-left"></div>
+    <div class="pitch-line pitch-right"></div>
+  </div>
+
+  <!-- ── App shell ── -->
+  <div class="app-wrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="ball-icon">⚽</span>
+        <span class="logo-text">Football<strong>GPT</strong></span>
+      </div>
+
+      <div class="sidebar-tagline">Your AI football expert</div>
+
+      <nav class="quick-topics">
+        <p class="qs-label">Quick topics</p>
+        <button class="topic-chip" data-q="Who are the top scorers in the Premier League this season?">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</button>
+        <button class="topic-chip" data-q="Who won the Champions League most recently and how did the final go?">🏆 Champions League</button>
+        <button class="topic-chip" data-q="Tell me about the greatest rivalry in football history.">🔥 Greatest Rivals</button>
+        <button class="topic-chip" data-q="Who is the GOAT of football — Messi or Ronaldo?">🐐 GOAT Debate</button>
+        <button class="topic-chip" data-q="Explain the tiki-taka style of play.">🎯 Tactics</button>
+        <button class="topic-chip" data-q="Give me some fun World Cup trivia.">🌍 World Cup</button>
+        <button class="topic-chip" data-q="What is VAR and why is it controversial?">📺 VAR</button>
+        <button class="topic-chip" data-q="Who are the best young footballers to watch right now?">⭐ Rising Stars</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="reset-btn" class="reset-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+          New conversation
+        </button>
+        <p class="model-badge">Model: qwen35-claude-coder:4b</p>
+      </div>
+    </aside>
+
+    <!-- MAIN CHAT -->
+    <main class="chat-main">
+
+      <!-- Header bar -->
+      <header class="chat-header">
+        <div class="header-left">
+          <button class="hamburger" id="hamburger" aria-label="Open sidebar">
+            <span></span><span></span><span></span>
+          </button>
+          <h1 class="header-title">⚽ FootballGPT</h1>
+        </div>
+        <div class="status-dot" id="status-dot" title="Ollama status"></div>
+      </header>
+
+      <!-- Messages -->
+      <section class="messages-area" id="messages-area" role="log" aria-live="polite">
+        <!-- Welcome message -->
+        <div class="msg-row assistant-row">
+          <div class="avatar assistant-avatar">⚽</div>
+          <div class="bubble assistant-bubble">
+            <p>🏆 <strong>Welcome to FootballGPT!</strong></p>
+            <p>I'm your AI-powered football expert — ask me anything about the beautiful game. Players, clubs, tactics, results, history… you name it!</p>
+            <p>Use the quick topics on the left, or just type your question below. Let's kick off! ⚽</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Typing indicator (hidden by default) -->
+      <div class="typing-indicator" id="typing-indicator" aria-label="FootballGPT is thinking">
+        <div class="avatar assistant-avatar small">⚽</div>
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <form class="input-area" id="chat-form" autocomplete="off">
+        <div class="input-wrapper">
+          <textarea
+            id="user-input"
+            class="user-input"
+            placeholder="Ask me anything football… e.g. Who invented the bicycle kick?"
+            rows="1"
+            maxlength="2000"
+            aria-label="Your message"
+          ></textarea>
+          <button type="submit" id="send-btn" class="send-btn" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+        <p class="char-count" id="char-count">0 / 2000</p>
+      </form>
+
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FootballGPT Architecture & RAG Memory Flow</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #070a13;
+            --bg-card: rgba(13, 20, 38, 0.6);
+            --bg-card-hover: rgba(20, 32, 60, 0.85);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(99, 102, 241, 0.4);
+            
+            --color-text: #94a3b8;
+            --color-text-bright: #f1f5f9;
+            --color-text-dark: #64748b;
+            
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.15);
+            --secondary: #06b6d4;
+            --secondary-glow: rgba(6, 182, 212, 0.15);
+            --accent: #a855f7;
+            --accent-glow: rgba(168, 85, 247, 0.15);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.15);
+            --warning: #f59e0b;
+            
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-title: 'Outfit', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.05) 0px, transparent 60%),
+                linear-gradient(rgba(255, 255, 255, 0.004) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.004) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+            color: var(--color-text);
+            font-family: var(--font-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+            padding-bottom: 80px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.5);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 60px 0 40px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .badge {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #c084fc;
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-family: var(--font-title);
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 16px;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+        }
+
+        h1 {
+            font-family: var(--font-title);
+            font-size: 3.2rem;
+            font-weight: 800;
+            color: var(--color-text-bright);
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #fff 30%, #a5b4fc 70%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.15rem;
+            color: var(--color-text-dark);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Tabs Navigation */
+        .tabs-nav {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 40px 0 30px 0;
+            background: rgba(13, 20, 38, 0.4);
+            border: 1px solid var(--border-color);
+            padding: 6px;
+            border-radius: 100px;
+            max-width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--color-text-dark);
+            font-family: var(--font-title);
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            color: var(--color-text-bright);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: var(--color-text-bright);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+        }
+
+        /* Tab Content */
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(12px);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2), 0 0 15px rgba(99, 102, 241, 0.05);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .icon-primary {
+            background: var(--primary-glow);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .icon-secondary {
+            background: var(--secondary-glow);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .icon-accent {
+            background: var(--accent-glow);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+
+        .icon-success {
+            background: var(--success-glow);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .card-title {
+            font-family: var(--font-title);
+            color: var(--color-text-bright);
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .card-subtitle {
+            font-size: 0.85rem;
+            color: var(--color-text-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 4px;
+        }
+
+        /* Diagram Containers */
+        .diagram-container {
+            background: rgba(8, 12, 25, 0.7);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            min-height: 400px;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+            margin-bottom: 30px;
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+            max-width: 1000px;
+        }
+
+        /* SVG styles for animations */
+        .svg-node {
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .svg-node:hover rect, .svg-node:hover circle {
+            stroke: var(--primary);
+            fill: rgba(99, 102, 241, 0.15) !important;
+            filter: drop-shadow(0 0 8px var(--primary));
+        }
+
+        .svg-line {
+            stroke-dasharray: 8;
+            animation: dash 30s linear infinite;
+        }
+
+        .svg-line-active {
+            stroke: var(--secondary);
+            stroke-width: 2.5px;
+            filter: drop-shadow(0 0 4px var(--secondary));
+            animation: dash-fast 15s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        @keyframes dash-fast {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        /* Code Blocks */
+        .code-container {
+            margin-top: 20px;
+        }
+
+        .code-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+
+        .code-tab {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--color-text-dark);
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: var(--font-title);
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .code-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .code-block {
+            display: none;
+            background: #090c15 !important;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            white-space: pre;
+            line-height: 1.5;
+        }
+
+        .code-block.active {
+            display: block;
+        }
+
+        .keyword { color: #f472b6; }
+        .function { color: #60a5fa; }
+        .string { color: #34d399; }
+        .comment { color: #64748b; font-style: italic; }
+        .number { color: #fbbf24; }
+        .decorator { color: #a78bfa; }
+
+        /* Steps List */
+        .steps {
+            list-style: none;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .step-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            background: var(--primary-glow);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-title);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #818cf8;
+            flex-shrink: 0;
+        }
+
+        .step-content h4 {
+            color: var(--color-text-bright);
+            font-family: var(--font-title);
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            font-size: 0.9rem;
+            color: var(--color-text);
+        }
+
+        /* Simulator Widget */
+        .simulator {
+            background: linear-gradient(145deg, rgba(13, 20, 38, 0.8) 0%, rgba(8, 12, 25, 0.9) 100%);
+            border: 1px solid var(--border-hover);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(99, 102, 241, 0.05);
+        }
+
+        .sim-input-group {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .sim-input {
+            flex-grow: 1;
+            background: rgba(7, 10, 19, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px 20px;
+            color: var(--color-text-bright);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .sim-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+        }
+
+        .sim-btn {
+            background: var(--primary);
+            color: var(--color-text-bright);
+            border: none;
+            border-radius: 10px;
+            padding: 0 28px;
+            font-family: var(--font-title);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .sim-btn:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+        }
+
+        .sim-flow {
+            background: rgba(5, 7, 13, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .sim-log-line {
+            display: flex;
+            gap: 12px;
+            opacity: 0;
+            transform: translateX(-10px);
+            animation: logFadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes logFadeIn {
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            height: fit-content;
+        }
+
+        .tag-sys { background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+        .tag-a3  { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .tag-a1  { background: rgba(6, 182, 212, 0.2); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+        .tag-tool{ background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .tag-a2  { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        .log-msg {
+            color: var(--color-text-bright);
+        }
+
+        .log-meta {
+            color: var(--color-text-dark);
+            margin-left: auto;
+        }
+
+        /* Features List */
+        .feature-list {
+            margin-top: 15px;
+        }
+        .feature-list li {
+            list-style: none;
+            padding-left: 20px;
+            position: relative;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        .feature-list li::before {
+            content: "✦";
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="badge">Architecture Blueprint</div>
+            <h1>FootballGPT Orchestration Engine</h1>
+            <p class="subtitle">An advanced Multi-Agent architecture combining Semantic Memory Retrieval, Two-Stage Tool-Calling, and Real-Time Memory Deduplication.</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab(event, 'tab-system')">
+                <span>🤖</span> System Orchestration
+            </button>
+            <button class="tab-btn" onclick="switchTab(event, 'tab-rag')">
+                <span>🧠</span> RAG Memory Flow
+            </button>
+            <button class="tab-btn" onclick="switchTab(event, 'tab-tools')">
+                <span>🔧</span> Tool Calling
+            </button>
+            <button class="tab-btn" onclick="switchTab(event, 'tab-simulator')">
+                <span>⚡</span> Execution Simulator
+            </button>
+        </div>
+
+        <!-- TAB 1: SYSTEM ORCHESTRATION -->
+        <div id="tab-system" class="tab-pane active">
+            <!-- Diagram -->
+            <div class="diagram-container">
+                <svg viewBox="0 0 1000 450" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <!-- Glow Filters -->
+                        <filter id="glow-primary" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="6" result="blur"/>
+                            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                        </filter>
+                        <filter id="glow-secondary" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="6" result="blur"/>
+                            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                        </filter>
+                    </defs>
+
+                    <!-- Background lines / connection network -->
+                    <path d="M 120,200 L 250,200" stroke="#475569" stroke-width="2" fill="none" class="svg-line" />
+                    <path d="M 370,200 L 500,200" stroke="#475569" stroke-width="2" fill="none" class="svg-line" />
+                    <path d="M 620,200 L 750,200" stroke="#475569" stroke-width="2" fill="none" class="svg-line" />
+                    
+                    <!-- Parallel Thread Splits -->
+                    <path d="M 310,240 C 310,340 500,340 500,340" stroke="#475569" stroke-width="1.5" stroke-dasharray="4" fill="none" />
+                    <path d="M 620,340 L 780,340 C 840,340 840,240 840,240" stroke="#475569" stroke-width="1.5" stroke-dasharray="4" fill="none" />
+
+                    <!-- ChromaDB memory injection path -->
+                    <path d="M 310,100 C 310,150 200,150 200,180" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="4" fill="none" />
+                    
+                    <!-- ChromaDB Node -->
+                    <g class="svg-node" transform="translate(310, 60)">
+                        <rect x="-80" y="-30" width="160" height="60" rx="10" fill="#1e1b4b" stroke="#a855f7" stroke-width="1.5" filter="url(#glow-secondary)" />
+                        <text x="0" y="5" font-family="'Outfit', sans-serif" font-size="14" font-weight="700" fill="#c084fc" text-anchor="middle">ChromaDB Store</text>
+                        <text x="0" y="20" font-family="sans-serif" font-size="10" fill="#a78bfa" text-anchor="middle">Cosine similarity space</text>
+                    </g>
+
+                    <!-- User input Node -->
+                    <g class="svg-node" transform="translate(120, 200)">
+                        <circle cx="0" cy="0" r="35" fill="#0f172a" stroke="#64748b" stroke-width="2" />
+                        <text x="0" y="5" font-family="'Outfit', sans-serif" font-size="12" font-weight="700" fill="#f1f5f9" text-anchor="middle">User msg</text>
+                    </g>
+
+                    <!-- Agent 3 Node -->
+                    <g class="svg-node" transform="translate(250, 200)">
+                        <rect x="-60" y="-40" width="120" height="80" rx="12" fill="#0f172a" stroke="#a855f7" stroke-width="2" />
+                        <text x="0" y="-15" font-family="'Outfit', sans-serif" font-size="14" font-weight="700" fill="#f1f5f9" text-anchor="middle">Agent 3</text>
+                        <text x="0" y="5" font-family="sans-serif" font-size="11" fill="#c084fc" text-anchor="middle">Retriever</text>
+                        <text x="0" y="20" font-family="sans-serif" font-size="9" fill="#64748b" text-anchor="middle">(Blocking)</text>
+                    </g>
+
+                    <!-- Agent 1 Node -->
+                    <g class="svg-node" transform="translate(500, 200)">
+                        <rect x="-60" y="-45" width="120" height="90" rx="12" fill="#1e1b4b" stroke="#6366f1" stroke-width="2.5" filter="url(#glow-primary)" />
+                        <text x="0" y="-20" font-family="'Outfit', sans-serif" font-size="15" font-weight="800" fill="#f1f5f9" text-anchor="middle">Agent 1</text>
+                        <text x="0" y="0" font-family="sans-serif" font-size="11" fill="#818cf8" text-anchor="middle">Chat Responder</text>
+                        <text x="0" y="15" font-family="sans-serif" font-size="9" fill="#06b6d4" text-anchor="middle">+ Tool Call Loop</text>
+                        <text x="0" y="28" font-family="sans-serif" font-size="9" fill="#64748b" text-anchor="middle">(Main Thread)</text>
+                    </g>
+
+                    <!-- Agent 2 Node -->
+                    <g class="svg-node" transform="translate(500, 340)">
+                        <rect x="-60" y="-40" width="120" height="80" rx="12" fill="#061f23" stroke="#10b981" stroke-width="2" />
+                        <text x="0" y="-15" font-family="'Outfit', sans-serif" font-size="14" font-weight="700" fill="#f1f5f9" text-anchor="middle">Agent 2</text>
+                        <text x="0" y="5" font-family="sans-serif" font-size="11" fill="#34d399" text-anchor="middle">Memory Writer</text>
+                        <text x="0" y="20" font-family="sans-serif" font-size="9" fill="#64748b" text-anchor="middle">(Async Background)</text>
+                    </g>
+
+                    <!-- Connection back to database from Agent 2 -->
+                    <path d="M 440,340 C 310,340 310,120 310,120" stroke="#10b981" stroke-width="2" stroke-dasharray="6" fill="none" class="svg-line-active" />
+
+                    <!-- Output Node -->
+                    <g class="svg-node" transform="translate(750, 200)">
+                        <circle cx="0" cy="0" r="35" fill="#061f23" stroke="#10b981" stroke-width="2" />
+                        <text x="0" y="5" font-family="'Outfit', sans-serif" font-size="12" font-weight="700" fill="#34d399" text-anchor="middle">Response</text>
+                    </g>
+
+                    <!-- Flow Arrows -->
+                    <polygon points="195,200 185,195 185,205" fill="#475569" />
+                    <polygon points="435,200 425,195 425,205" fill="#475569" />
+                    <polygon points="685,200 675,195 675,205" fill="#475569" />
+                    
+                    <!-- ChromaDB Write Arrow -->
+                    <polygon points="310,110 305,120 315,120" fill="#10b981" />
+                </svg>
+            </div>
+
+            <!-- Agent Explanations -->
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon icon-accent">A3</div>
+                        <div>
+                            <div class="card-subtitle">Pre-Process (Blocking)</div>
+                            <h3 class="card-title">Agent 3: Retriever</h3>
+                        </div>
+                    </div>
+                    <p>Runs immediately when a user message is received. It is responsible for searching the long-term vector store for historical context.</p>
+                    <ul class="feature-list">
+                        <li>Generates embeddings for user query</li>
+                        <li>Searches ChromaDB vector collection</li>
+                        <li>Retrieves top matches (similarity > 0.5)</li>
+                        <li>Injects matching contexts dynamically into Agent 1's system prompt</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon icon-primary">A1</div>
+                        <div>
+                            <div class="card-subtitle">Main Stream (User-Facing)</div>
+                            <h3 class="card-title">Agent 1: Converser</h3>
+                        </div>
+                    </div>
+                    <p>The core conversational engine of FootballGPT. It generates the reply to the user and triggers external API actions.</p>
+                    <ul class="feature-list">
+                        <li>Fitted with systemic football knowledge</li>
+                        <li>Equipped with API-Football capabilities</li>
+                        <li>Executes complex, 2-stage tool-calling</li>
+                        <li>Maintains localized thread history</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon icon-success">A2</div>
+                        <div>
+                            <div class="card-subtitle">Post-Process (Async)</div>
+                            <h3 class="card-title">Agent 2: Memorizer</h3>
+                        </div>
+                    </div>
+                    <p>Runs asynchronously in a background thread pool executor so the user does not wait. Stretches memory longevity.</p>
+                    <ul class="feature-list">
+                        <li>Extracts core facts in structured JSON</li>
+                        <li>Calculates cosine similarity to prevent repeats</li>
+                        <li>Deduplicates memories (threshold > 0.95)</li>
+                        <li>Persists unique facts in ChromaDB</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: RAG MEMORY FLOW -->
+        <div id="tab-rag" class="tab-pane">
+            <div class="grid-2">
+                <!-- Diagram -->
+                <div class="diagram-container">
+                    <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Vertical Memory Pipeline -->
+                        <g transform="translate(250, 50)">
+                            <!-- User Message -->
+                            <rect x="-100" y="0" width="200" height="40" rx="8" fill="#0f172a" stroke="#64748b" stroke-width="1.5"/>
+                            <text x="0" y="25" font-family="'Outfit', sans-serif" font-size="12" fill="#fff" text-anchor="middle">1. User message extracted</text>
+                            
+                            <!-- Arrow down -->
+                            <path d="M 0,40 L 0,80" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
+                            
+                            <!-- Embed block -->
+                            <g transform="translate(0, 80)">
+                                <rect x="-100" y="0" width="200" height="40" rx="8" fill="#1e1b4b" stroke="#a855f7" stroke-width="1.5"/>
+                                <text x="0" y="25" font-family="'Outfit', sans-serif" font-size="12" fill="#c084fc" text-anchor="middle">2. Generate Embeddings</text>
+                            </g>
+                            
+                            <!-- Arrow down -->
+                            <path d="M 0,120 L 0,160" stroke="#6366f1" stroke-width="2" />
+                            
+                            <!-- Similarity search / Deduplication -->
+                            <g transform="translate(0, 160)">
+                                <polygon points="0,0 120,30 0,60 -120,30" fill="#061f23" stroke="#10b981" stroke-width="1.5"/>
+                                <text x="0" y="35" font-family="'Outfit', sans-serif" font-size="11" fill="#34d399" text-anchor="middle">3. ChromaDB Query & Match</text>
+                            </g>
+                            
+                            <!-- Arrow Right (Duplicate found) -->
+                            <path d="M 120,190 L 170,190 C 200,190 200,280 200,280" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3" fill="none" />
+                            <text x="160" y="180" font-family="sans-serif" font-size="10" fill="#f87171" text-anchor="middle">> 0.95 similarity</text>
+                            
+                            <!-- Skip Node -->
+                            <g transform="translate(200, 280)">
+                                <circle cx="0" cy="0" r="25" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5" />
+                                <text x="0" y="4" font-family="'Outfit', sans-serif" font-size="10" fill="#fff" text-anchor="middle">SKIP</text>
+                            </g>
+                            
+                            <!-- Arrow Down (New memory) -->
+                            <path d="M 0,220 L 0,260" stroke="#10b981" stroke-width="2" />
+                            <text x="40" y="245" font-family="sans-serif" font-size="10" fill="#34d399" text-anchor="middle">≤ 0.95 similarity</text>
+                            
+                            <!-- Store Block -->
+                            <g transform="translate(0, 260)">
+                                <rect x="-100" y="0" width="200" height="40" rx="8" fill="#062f29" stroke="#10b981" stroke-width="1.5"/>
+                                <text x="0" y="25" font-family="'Outfit', sans-serif" font-size="12" fill="#34d399" text-anchor="middle">4. Store in ChromaDB</text>
+                            </g>
+                        </g>
+                        
+                        <!-- Marker definition -->
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+
+                <!-- Memory details -->
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 15px;">Deduplication & Cosine Space</h3>
+                    <p style="margin-bottom: 15px;">When the memory extraction agent (Agent 2) finds a new fact, it is vital to avoid storing redundant memory blocks (e.g., repeating "User supports Arsenal" multiple times).</p>
+                    
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid var(--accent);">
+                        <p style="font-size: 0.9rem; font-family: var(--font-mono); color: var(--color-text-bright);">
+                            distance = CosineDistance(emb_new, emb_old)<br>
+                            similarity = 1.0 - (distance / 2.0)<br>
+                            if similarity > 0.95: SKIP_STORE()
+                        </p>
+                    </div>
+                    
+                    <h4 style="color: var(--color-text-bright); margin-bottom: 8px;">Key Storage Attributes:</h4>
+                    <ul class="feature-list" style="margin-bottom: 20px;">
+                        <li><strong>Unique ID:</strong> Stored via UUIDv4</li>
+                        <li><strong>Embedding:</strong> Multi-dimensional array representing semantic layout</li>
+                        <li><strong>Document:</strong> Cleaned text descriptor of the fact</li>
+                        <li><strong>Metadata:</strong> ISO timestamp to manage time-sensitive recall</li>
+                    </ul>
+
+                    <div class="code-container">
+                        <div class="code-tabs">
+                            <button class="code-tab active" onclick="switchCode(event, 'code-extract')">Extraction</button>
+                            <button class="code-tab" onclick="switchCode(event, 'code-dedup')">Deduplication</button>
+                        </div>
+                        
+                        <div id="code-extract" class="code-block active"><span class="keyword">def</span> <span class="function">extract_memory</span>(user_message: str) -&gt; str:
+    <span class="comment"># Call local model to parse message for important facts</span>
+    payload = {
+        <span class="string">"model"</span>: MODEL,
+        <span class="string">"messages"</span>: [
+            {<span class="string">"role"</span>: <span class="string">"system"</span>, <span class="string">"content"</span>: MEMORY_SYSTEM_PROMPT},
+            {<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: user_message}
+        ],
+        <span class="string">"stream"</span>: <span class="keyword">False</span>
+    }
+    resp = requests.post(OLLAMA_URL, json=payload)
+    <span class="comment"># Parses structured JSON {"imp": "User supports Arsenal"}</span></div>
+
+                        <div id="code-dedup" class="code-block"><span class="comment"># Calculate similarity check (ChromaDB cosine space)</span>
+<span class="keyword">if</span> memory_collection.count() &gt; <span class="number">0</span>:
+    existing = memory_collection.query(
+        query_embeddings=[embedding_vector],
+        n_results=<span class="number">1</span>,
+        include=[<span class="string">"distances"</span>]
+    )
+    <span class="keyword">if</span> existing[<span class="string">"distances"</span>][<span class="number">0</span>]:
+        similarity = <span class="number">1</span> - (existing[<span class="string">"distances"</span>][<span class="number">0</span>][<span class="number">0</span>] / <span class="number">2</span>)
+        <span class="keyword">if</span> similarity &gt; <span class="number">0.95</span>:
+            print(<span class="string">"[Agent 2] Duplicate skipped"</span>)
+            <span class="keyword">return</span> <span class="string">"Duplicate — not stored"</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: TOOL CALLING -->
+        <div id="tab-tools" class="tab-pane">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 15px;">2-Stage Tool Execution Loop</h3>
+                    <p style="margin-bottom: 15px;">Instead of replying blindly, Agent 1 is loaded with structural tool definition schemas. Emojis and other configurations are fine-tuned for a fast, responsive interface.</p>
+
+                    <div class="steps">
+                        <div class="step-item">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <h4>LLM Decides Action</h4>
+                                <p>The model receives the conversation history. It decides if the user's question requires real-time data (e.g. current standings) and returns a structural tool call payload instead of final text.</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <h4>Interception & Execution</h4>
+                                <p>The Flask application intercepts the tool call, matches the function name against local handlers, runs the request against the external <code>api-sports</code> endpoint, and formats the output string.</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <h4>Data Feed & Final Answer</h4>
+                                <p>The formatted output is injected as a <code>tool</code> role message in the conversation thread. The model runs a second completion cycle to build a natural conversational response utilizing the retrieved metrics.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.2); padding: 15px; border-radius: 12px; margin-top: 25px;">
+                        <h4 style="color: var(--color-text-bright); margin-bottom: 8px;">Available API-Football Handlers:</h4>
+                        <code style="font-family: var(--font-mono); font-size: 0.85rem; color: #22d3ee;">get_standings()</code>, 
+                        <code style="font-family: var(--font-mono); font-size: 0.85rem; color: #22d3ee;">get_fixtures()</code>, 
+                        <code style="font-family: var(--font-mono); font-size: 0.85rem; color: #22d3ee;">get_live_scores()</code>, 
+                        <code style="font-family: var(--font-mono); font-size: 0.85rem; color: #22d3ee;">get_player_stats()</code>, 
+                        <code style="font-family: var(--font-mono); font-size: 0.85rem; color: #22d3ee;">get_top_scorers()</code>
+                    </div>
+                </div>
+
+                <!-- Tool Diagram -->
+                <div class="diagram-container">
+                    <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Horizontal Flow -->
+                        <g transform="translate(250, 40)">
+                            <!-- User Message -->
+                            <rect x="-90" y="0" width="180" height="40" rx="8" fill="#0f172a" stroke="#64748b" stroke-width="1.5"/>
+                            <text x="0" y="25" font-family="'Outfit', sans-serif" font-size="11" fill="#fff" text-anchor="middle">Conversation Thread</text>
+                            
+                            <!-- Arrow down -->
+                            <path d="M 0,40 L 0,80" stroke="#6366f1" stroke-width="1.5" />
+                            
+                            <!-- First LLM call -->
+                            <g transform="translate(0, 80)">
+                                <rect x="-90" y="0" width="180" height="45" rx="8" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+                                <text x="0" y="20" font-family="'Outfit', sans-serif" font-size="12" fill="#818cf8" text-anchor="middle">First LLM Call</text>
+                                <text x="0" y="35" font-family="sans-serif" font-size="9" fill="#94a3b8" text-anchor="middle">(Decides if tool is needed)</text>
+                            </g>
+                            
+                            <!-- Arrow down -->
+                            <path d="M 0,125 L 0,165" stroke="#6366f1" stroke-width="1.5" />
+                            
+                            <!-- Branching Decision -->
+                            <g transform="translate(0, 165)">
+                                <polygon points="0,0 80,25 0,50 -80,25" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/>
+                                <text x="0" y="30" font-family="sans-serif" font-size="10" fill="#fbbf24" text-anchor="middle">Tool call requested?</text>
+                            </g>
+                            
+                            <!-- No -> Output -->
+                            <path d="M -80,190 L -150,190 L -150,380 L -80,380" stroke="#64748b" stroke-width="1.5" stroke-dasharray="3" fill="none" />
+                            <text x="-135" y="180" font-family="sans-serif" font-size="9" fill="#64748b" text-anchor="middle">No</text>
+                            
+                            <!-- Yes -> Execute tool -->
+                            <path d="M 80,190 L 150,190 L 150,250" stroke="#fbbf24" stroke-width="1.5" fill="none" />
+                            <text x="110" y="180" font-family="sans-serif" font-size="9" fill="#fbbf24" text-anchor="middle">Yes</text>
+                            
+                            <!-- Execute Local Tool function -->
+                            <g transform="translate(150, 250)">
+                                <rect x="-80" y="0" width="160" height="40" rx="8" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+                                <text x="0" y="20" font-family="'Outfit', sans-serif" font-size="11" fill="#22d3ee" text-anchor="middle">API-Sports execution</text>
+                                <text x="0" y="32" font-family="sans-serif" font-size="8" fill="#64748b" text-anchor="middle">get_standings / get_player_stats...</text>
+                            </g>
+                            
+                            <!-- Arrow down from local tool -->
+                            <path d="M 150,290 L 150,330 C 150,360 80,360 80,360" stroke="#22d3ee" stroke-width="1.5" fill="none" />
+                            
+                            <!-- Feed results back to second LLM call -->
+                            <g transform="translate(0, 340)">
+                                <rect x="-90" y="0" width="180" height="45" rx="8" fill="#1e1b4b" stroke="#10b981" stroke-width="1.5"/>
+                                <text x="0" y="20" font-family="'Outfit', sans-serif" font-size="12" fill="#34d399" text-anchor="middle">Second LLM Call</text>
+                                <text x="0" y="35" font-family="sans-serif" font-size="9" fill="#94a3b8" text-anchor="middle">(With Tool Outputs injected)</text>
+                            </g>
+                            
+                            <!-- Arrow down -->
+                            <path d="M 0,385 L 0,425" stroke="#10b981" stroke-width="1.5" />
+                            
+                            <!-- Final reply -->
+                            <g transform="translate(0, 425)">
+                                <rect x="-80" y="0" width="160" height="35" rx="8" fill="#062f29" stroke="#10b981" stroke-width="1.5"/>
+                                <text x="0" y="22" font-family="'Outfit', sans-serif" font-size="12" fill="#34d399" text-anchor="middle">Final User Response</text>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: SIMULATOR -->
+        <div id="tab-simulator" class="tab-pane">
+            <div class="card simulator">
+                <h3 class="card-title">Real-Time Flow Simulator</h3>
+                <p>Type a message to mock-simulate the complete life-cycle of a user request across our 3-Agent ecosystem.</p>
+                
+                <div class="sim-input-group">
+                    <input type="text" id="simInput" class="sim-input" value="Saka plays for Arsenal. Can you check where they are in the table?" placeholder="Enter query...">
+                    <button class="sim-btn" onclick="startSimulation()">Simulate Flow</button>
+                </div>
+                
+                <div id="simFlow" class="sim-flow">
+                    <span style="color: var(--color-text-dark); font-style: italic;">Click "Simulate Flow" to initialize the trace...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(evt, tabId) {
+            const panes = document.querySelectorAll('.tab-pane');
+            panes.forEach(pane => pane.classList.remove('active'));
+            
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        // Code tab switching
+        function switchCode(evt, codeId) {
+            const card = evt.currentTarget.closest('.card');
+            const blocks = card.querySelectorAll('.code-block');
+            blocks.forEach(block => block.classList.remove('active'));
+            
+            const tabs = card.querySelectorAll('.code-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(codeId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        // Execution Simulator
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function startSimulation() {
+            const container = document.getElementById('simFlow');
+            const inputVal = document.getElementById('simInput').value;
+            container.innerHTML = '';
+            
+            const logs = [
+                { tag: 'sys', msg: `Received User message: "${inputVal}"`, delay: 1000 },
+                { tag: 'sys', msg: 'Initiating Step 1 (Blocking retrieval)...', delay: 800 },
+                { tag: 'a3', msg: 'Embedding user message...', delay: 1200 },
+                { tag: 'a3', msg: 'Querying ChromaDB vector storage (n_results=3)...', delay: 1000 },
+                { tag: 'a3', msg: 'Found relevant memory: "User loves Arsenal FC" (Similarity: 0.887)', delay: 1000 },
+                { tag: 'a3', msg: 'Injecting memory context into Agent 1 system prompt. Pre-process complete.', delay: 800 },
+                { tag: 'sys', msg: 'Spinning up ThreadPoolExecutor (max_workers=2) for Agent 1 and Agent 2...', delay: 600 },
+                { tag: 'a1', msg: 'Agent 1 received system prompt + matching memory + conversation history.', delay: 1000 },
+                { tag: 'a1', msg: 'Agent 1 output: Requested Tool Call -> get_standings(league_id=39, season=2024)', delay: 1200 },
+                { tag: 'tool', msg: 'Executing tool: get_standings(league_id=39, season=2024)', delay: 1500 },
+                { tag: 'tool', msg: 'API Sports response: 200 OK. Formatted league table generated.', delay: 1000 },
+                { tag: 'a1', msg: 'Running second LLM completion cycle with injected API response table...', delay: 1200 },
+                { tag: 'a1', msg: 'Agent 1 generated final reply: "Arsenal is currently 2nd in the table..."', delay: 1000 },
+                { tag: 'a2', msg: 'Agent 2 (Async Background Thread) running memory extraction on user message...', delay: 1500 },
+                { tag: 'a2', msg: 'Agent 2 parsed facts: {"imp": "Saka plays for Arsenal"}', delay: 1000 },
+                { tag: 'a2', msg: 'Generating embedding for extracted fact...', delay: 1200 },
+                { tag: 'a2', msg: 'Querying ChromaDB for similarity deduplication check...', delay: 1000 },
+                { tag: 'a2', msg: 'Existing match similarity: 0.965 > 0.95 ("User loves Arsenal FC" / "Saka plays for Arsenal").', delay: 1200 },
+                { tag: 'a2', msg: 'Duplicate skipped — memory not stored in database.', delay: 1000 },
+                { tag: 'sys', msg: 'Trace completed successfully.', delay: 0 }
+            ];
+
+            for (let i = 0; i < logs.length; i++) {
+                const log = logs[i];
+                const line = document.createElement('div');
+                line.className = 'sim-log-line';
+                
+                const time = new Date().toLocaleTimeString();
+                
+                line.innerHTML = `
+                    <span class="log-tag tag-${log.tag}">${log.tag}</span>
+                    <span class="log-msg">${log.msg}</span>
+                    <span class="log-meta">${time}</span>
+                `;
+                
+                container.appendChild(line);
+                container.scrollTop = container.scrollHeight;
+                
+                if (log.delay > 0) {
+                    await sleep(log.delay);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

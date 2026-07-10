@@ -1,0 +1,24 @@
+# Secrets — NEVER commit these
+.env
+
+# ChromaDB vector store (local data, not needed in repo)
+chroma_db/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+flask_debug.log
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
