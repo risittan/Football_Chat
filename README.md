@@ -1,21 +1,21 @@
-# ⚽ FootballGPT — AI Football Chatbot with Persistent Memory
+# FootballGPT — AI Football Chatbot with Persistent Memory
 
 A football-focused conversational AI built with Flask, powered by a local **Ollama** LLM and a **three-agent architecture** that supports real-time data fetching, semantic memory, and multi-turn conversation.
 
 ---
 
-## ✨ Features
+## Features
 
-- 🧠 **Persistent Vector Memory** — Remembers user preferences (favourite teams, players, opinions) across sessions using ChromaDB and semantic embeddings
-- 🔴 **Live Football Data** — Fetches real-time scores, fixtures, standings, player stats, and top scorers via [API-Football](https://www.api-football.com/)
-- 🛠️ **Tool Calling** — LLM autonomously decides when to call external tools (no hardcoded triggers)
-- 💬 **Multi-turn Conversations** — Per-session conversation history with a `/api/reset` endpoint
-- ⚡ **Parallel Agent Execution** — Memory extraction runs concurrently with response generation for zero added latency
-- 🔍 **Deduplication** — Cosine similarity check prevents storing duplicate memories
+- **Persistent Vector Memory** — Remembers user preferences (favourite teams, players, opinions) across sessions using ChromaDB and semantic embeddings
+- **Live Football Data** — Fetches real-time scores, fixtures, standings, player stats, and top scorers via [API-Football](https://www.api-football.com/)
+- **Tool Calling** — LLM autonomously decides when to call external tools (no hardcoded triggers)
+- **Multi-turn Conversations** — Per-session conversation history with a `/api/reset` endpoint
+- **Parallel Agent Execution** — Memory extraction runs concurrently with response generation for zero added latency
+- **Deduplication** — Cosine similarity check prevents storing duplicate memories
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 The system uses three cooperative agents running per request:
 
@@ -42,7 +42,7 @@ User Message
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 | Component | Technology |
 |---|---|
@@ -54,7 +54,7 @@ User Message
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -107,7 +107,7 @@ Then open **http://127.0.0.1:5000** in your browser.
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -127,7 +127,7 @@ Then open **http://127.0.0.1:5000** in your browser.
 
 ---
 
-## 🛠️ Available Tools
+## Available Tools
 
 The LLM automatically selects the appropriate tool based on the user's query:
 
@@ -141,7 +141,7 @@ The LLM automatically selects the appropriate tool based on the user's query:
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 chat_embeddings/
@@ -158,7 +158,7 @@ chat_embeddings/
 
 ---
 
-## ⚠️ Notes
+## Notes
 
 - The `chroma_db/` directory is created automatically on first run and persists memory between restarts.
 - The Football API has a free tier with rate limits — check your plan at [api-football.com](https://www.api-football.com/).
@@ -166,6 +166,6 @@ chat_embeddings/
 
 ---
 
-## 📄 License
+## License
 
 MIT
